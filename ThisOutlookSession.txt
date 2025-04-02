@@ -1,0 +1,4 @@
+' Вставь этот код в модуль ThisOutlookSession вручную
+Private Sub Application_Startup()
+    GitHubUpdater.AutoUpdateLibrary
+End Sub

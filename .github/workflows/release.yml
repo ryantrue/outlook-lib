@@ -1,0 +1,57 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          FILE="VERSION.txt"
+          VER=$(cat $FILE)
+          MAJOR=$(echo $VER | cut -d. -f1)
+          MINOR=$(echo $VER | cut -d. -f2)
+          PATCH=$(echo $VER | cut -d. -f3)
+          NEW_VER="$MAJOR.$MINOR.$((PATCH+1))"
+          echo $NEW_VER > $FILE
+          echo "new_version=$NEW_VER" >> $GITHUB_OUTPUT
+
+      - name: Commit bumped version
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add VERSION.txt
+          git commit -m "Bump version to ${{ steps.bump.outputs.new_version }}"
+          git push
+
+      - name: Create release zip
+        run: |
+          mkdir dist
+          cp -r src/*.bas dist/
+          cp -r src/*.cls dist/
+          cp VERSION.txt dist/
+          cp ThisOutlookSession.txt dist/
+          zip -r outlook-lib-release.zip dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.bump.outputs.new_version }}
+          name: "Outlook-lib v${{ steps.bump.outputs.new_version }}"
+          files: outlook-lib-release.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
